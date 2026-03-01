@@ -1,165 +1,166 @@
-# SpatioCore Flow — Verification-First Multi-Agent LLM Architecture
+# SpatioCore Flow v2.0 — Gated Multi-Agent Biological Orchestrator
 
-SpatioCore Flow is a sequential multi-agent system designed to bridge the gap between Single-Cell Foundation Models and clinical decision support.
+SpatioCore Flow is a production-grade, multi-agent framework for autonomous analysis of **Single-Cell Genomics (SCG)** and **Spatial Transcriptomics (ST)**.
 
-It orchestrates a suite of specialized transformers—including scGPT, Geneformer, and HyenaDNA—to automate high-dimensional biological analysis with an autonomous, audit-ready verification layer.
-
-It is a research prototype exploring how agentic workflows can navigate the complexity of multimodal single-cell genomics (SCG) and spatial biology.
+Unlike standard LLM wrappers, SpatioCore Flow implements a **Verification-First architecture**. Foundation models (scGPT, Geneformer) and spatial tools (Tangram, cell2location) operate as modular worker nodes governed by **Deterministic Validation Gates** to eliminate biological hallucination.
 
 ---
 
-## System Architecture
+# 1. Advanced System Architecture
 
-SpatioCore Flow operationalizes a **Multimodal Modality-to-Task pipeline**.
+SpatioCore Flow v2.0 utilizes a **Hybrid DAG Orchestration model**.
 
-It treats pre-trained biological transformers and spatial deconvolution tools as modular **"Tools"** within a CrewAI framework.
-
-The orchestrator determines whether to invoke:
-- Single-cell models (scGPT, Geneformer)
-- Spatial models (Tangram, cell2location)
-- Imaging transformers (StarDist, Vision Transformers)
-
-Based on:
-- Input modality
-- Downstream biological task
-
----
-
-## Architecture Diagram
+It replaces linear agent chaining with a **Sandbox-Gate pattern**: every AI-generated inference is programmatically verified against raw AnnData/Squidpy objects before downstream propagation.
 
 ```mermaid
 graph TD
-    A[Raw SCG & Spatial Data] --> B[Streamlit UI]
-    B --> C[Spatial Preprocessing — Squidpy/Scanpy]
-    B --> D[Bio-Knowledge Graph]
+    A[Raw Multi-Omic Input] --> B[FastAPI / Streamlit UI]
+    B --> C[Data Buffer: Scanpy/Squidpy/AnnData]
     
-    C & D --> E{CrewAI Sequential Orchestrator}
+    subgraph "The Orchestration Engine (CrewAI + LiteLLM)"
+        C --> D{Curator: Modality Mapper}
+        D --> E[Analyst: Transformer Executor]
+        
+        subgraph "Deterministic Sandbox"
+            E --> F[Code-in-the-Loop Validation]
+            F -->|Statistical Check| G{Confidence Gate}
+            G -->|Fail: Loopback| E
+        end
+        
+        G -->|Pass| H[Synthesizer: Spatial Integration]
+        H --> I[Auditor: Grounding & Traceability]
+        I --> J[Guardrail: Clinical Risk/Safety]
+    end
 
-    E --> F[Curator — Modality & Spatial Mapping]
-    F --> G[Analyst — Foundation Model & Deconvolution]
-    G --> H[Synthesizer — Spatial-Omic Integration]
-    H --> I[Auditor — Histological Grounding]
-    I --> J[Guardrail — Clinical Safety Flags]
+    J --> K[PostgreSQL Audit Trail]
+    J --> L[ChromaDB Knowledge Retrieval]
+    J --> M[Verified Analysis Report + PDF]
 
-    J --> K[Interactive Spatial Dashboard + PDF Report]
-    J --> L[(SQLite — Result Cache)]
-    
-    subgraph "Specialized Tool Zoo"
-    G -.-> M[Transcriptomics: scGPT/Geneformer]
-    G -.-> N[Spatial: Tangram/cell2location]
-    G -.-> O[Imaging: StarDist/Segment-Anything]
+    subgraph "Foundation Model Zoo"
+        E -.-> N[scGPT / Geneformer]
+        E -.-> O[Tangram / cell2location]
+        E -.-> P[StarDist / ViT-Imaging]
     end
 ```
 
 ---
 
-## Agent Pipeline
+# 2. The Gated Agent Pipeline
 
-| Tier | Agent        | Logic Type   | Primary Responsibility |
-|------|-------------|--------------|------------------------|
-| 1 | Curator | Fast | Maps raw inputs to physical context; identifies whether a sample is Dissociated (Single-Cell) or In Situ (Spatial). |
-| 2 | Analyst | Tool-Bound | Executes tasks: cell-type deconvolution, spatial transcriptomics prediction, and morphological segmentation. |
-| 3 | Synthesizer | Reasoning | Merges **"What" (Transcriptomics)** with **"Where" (Spatial)**; identifies cellular neighborhoods and ligand-receptor proximity. |
-| 4 | Auditor | Precise | Verifies that predicted drug responses are feasible within the observed Tissue Microenvironment (TME). |
-| 5 | Guardrail | Precise | Flags discrepancies between molecular signatures and histological features (e.g., misaligned tumor margins). |
+Each agent is constrained by **Pydantic output schemas** to enforce structured data integrity.
 
----
-
-## Design Decisions — Why “Flow”?
-
-### 1. Beyond the "Soup"
-
-Standard single-cell analysis treats tissue like a "soup," losing cellular coordinates.
-
-By integrating:
-- Spatial transformers
-- Image transformers
-
-SpatioCore Flow can determine whether:
-- An immune cell is infiltrating a tumor  
-- Or simply located at the periphery  
+| Tier | Agent | Logic Type | Role in the Flow |
+|------|-------|------------|------------------|
+| 1 | Curator | Deterministic + LLM | Maps raw data to correct biological coordinate system (Dissociated vs. In-Situ). |
+| 2 | Analyst | Tool-Execution | Runs foundation models for deconvolution and ST prediction. |
+| 3 | Validator (NEW) | Code-Driven | Verifies Analyst claims (e.g., marker genes exist in source data). |
+| 4 | Synthesizer | Reasoning | Merges “What” (RNA) with “Where” (Spatial). |
+| 5 | Auditor | Verification | Provides source-to-bit traceability linking every claim to gene index or pixel coordinate. |
+| 6 | Guardrail | Compliance | Evaluates outputs against FDA/SaMD risk frameworks and clinical literature. |
 
 ---
 
-### 2. Histological Grounding
+# 3. Core Technical Decisions
 
-The Auditor agent treats spatial and imaging outputs as **ground truth anchors**.
+## Code-in-the-Loop (CitL) Verification
 
-If the Transcriptomics Analyst predicts:
-- High metabolic activity  
+To mitigate agentic hallucination:
 
-The Auditor cross-references:
-- Cell morphology  
-- Tissue architecture  
-
-To validate biological plausibility.
+- Auditor triggers secure Python sandbox execution
+- Biological Consistency Score (BCS) is computed
+- If BCS < 0.8 → inference rejected
+- Analyst re-runs with constraint adjustments
 
 ---
 
-### 3. Deconvolution Logic
+## Multimodal "Digital Twin" Synthesis
 
-Spatial transcriptomics spots often contain multiple cells.
-
-The Analyst agent uses deconvolution tools (e.g., Tangram) to:
-- Map high-resolution single-cell profiles  
-- Onto lower-resolution spatial captures  
+- Tangram + cell2location map dissociated profiles onto tissue slices
+- Synthesizer builds a **Spatial Graph** of the tumor microenvironment (TME)
+- Predicts drug penetration and spatial efficacy
 
 ---
 
-## Tech Stack
+## Traceability & Explainability
+
+- All outputs timestamped and stored in PostgreSQL
+- Deep Linking: clicking a recommendation highlights spatial spots that generated it
+- Every biological claim linked to raw data index
+
+---
+
+# 4. Production Roadmap & Testing
+
+## Testing Strategy
+
+**Regression Testing**
+- Tabula Sapiens (Single-Cell)
+- 10x Visium (Spatial)
+
+**Synthetic Hallucination Testing**
+- Inject scrambled genomic inputs
+- Ensure Confidence Gate blocks invalid inference
+
+---
+
+## Scalability Plan
+
+**Model Sharding**
+- scGPT and large models deployed as independent microservices
+
+**Asynchronous Execution**
+- Heavy spatial tasks run as background jobs
+- UI updated via WebSocket state manager
+
+---
+
+# 5. Tech Stack
 
 | Layer | Technology |
-|-------|------------|
-| Agent Orchestration | CrewAI (Sequential Process) |
-| Foundation Models | scGPT, Geneformer, scPathway, ESM-2 |
-| Spatial Frameworks | Squidpy, Tangram, cell2location |
-| Imaging & Vision | OpenSlide, StarDist, Vision Transformers (ViT) |
-| Data Processing | Scanpy, PyTorch, Biopython |
-| Inference Routing | LiteLLM (Groq, OpenAI, Anthropic support) |
+|--------|------------|
+| Orchestration | CrewAI (Hybrid-DAG), LiteLLM |
+| Omics Compute | Scanpy, Squidpy, AnnData |
+| AI Models | scGPT, Geneformer, StarDist, ViT |
+| Database | PostgreSQL (State), ChromaDB (RAG), Redis (Cache) |
+| Validation | Pydantic (Schemas), Pytest (Regression) |
+| API Layer | FastAPI + Streamlit UI |
 
 ---
 
-## Installation & Usage
+# 6. Installation
 
-### 1. Configure Credentials
-
-Create a `.env` file in the project root:
+## 1. Environment Setup
 
 ```bash
-GROQ_API_KEY=your_key_here
-OPENAI_API_KEY=your_key_here
+# Recommended: use 'uv' for high-speed dependency resolution
+uv venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
 ```
 
 ---
 
-### 2. Install Dependencies
+## 2. Launching the Flow
 
 ```bash
-pip install -r requirements.txt
+# Launch CLI + Streamlit UI
+python main.py --ui
 ```
 
 ---
 
-### 3. Run the Platform
+# Disclaimer
 
-```bash
-streamlit run app.py
-```
+SpatioCore Flow is a research prototype intended for professional bioinformaticians.
 
----
+It does **not** provide medical advice.
 
-## Disclaimer
+All outputs must be verified by a qualified investigator.
 
-SpatioCore Flow is a research prototype.
-
-It does **not** provide medical advice and is **not validated for clinical use**.
-
-All outputs require review by a qualified healthcare professional.
-
-The regulatory risk assessment produced by the Guardrail agent is prompt-generated and does not constitute a legal or regulatory determination.
+The system is designed to align with FDA SaMD (Software as a Medical Device) transparency and traceability principles but is not currently a certified medical device.
 
 ---
 
-## License
+# License
 
 MIT License
