@@ -1,0 +1,87 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "spatiocoreflow"
+version = "2.0.0"
+description = "Gated multi-agent framework for single-cell and spatial transcriptomics analysis"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+
+# ── Core omics stack ──────────────────────────────────────────────────────────
+dependencies = [
+    # Single-cell / spatial compute
+    "anndata>=0.10",
+    "scanpy>=1.10",
+    "squidpy>=1.4",
+
+    # Agent orchestration & LLM routing
+    "crewai>=0.55",
+    "litellm>=1.40",
+
+    # Schema enforcement & validation
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+
+    # API & UI layers
+    "fastapi>=0.111",
+    "uvicorn[standard]>=0.30",
+    "streamlit>=1.35",
+
+    # Vector store (RAG) & audit DB
+    "chromadb>=0.5",
+    "psycopg2-binary>=2.9",
+    "sqlalchemy>=2.0",
+
+    # Caching
+    "redis>=5.0",
+
+    # Utilities
+    "python-dotenv>=1.0",
+    "tenacity>=8.3",         # retry logic for Confidence Gate loopback
+    "httpx>=0.27",
+    "rich>=13.7",            # console output
+]
+
+[project.optional-dependencies]
+# Foundation model support (heavy — install separately per workload)
+models = [
+    "torch>=2.3",
+    "torchvision>=0.18",
+    "transformers>=4.41",    # Geneformer
+    "stardist>=0.8",
+    "opencv-python>=4.9",
+]
+
+# Developer tooling
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "pre-commit>=3.7",
+]
+
+[project.scripts]
+spatiocoreflow = "main:main"
+
+# ── Tool configuration ────────────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "--cov=. --cov-report=term-missing"
