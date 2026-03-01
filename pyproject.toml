@@ -27,6 +27,7 @@ dependencies = [
 
     # API & UI layers
     "fastapi>=0.111",
+    "python-multipart>=0.0.9",   # required for UploadFile / form data
     "uvicorn[standard]>=0.30",
     "streamlit>=1.35",
 
